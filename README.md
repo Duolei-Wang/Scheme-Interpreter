@@ -1,5 +1,9 @@
 # Scheme-Interpreter
 
+I'm learnig Write Your Scheme Interpreter in 48h, A Haskell Tutorial. Here is the archive of my codes. I'm not sure whether it will finally meets some standard of Scheme, just for learning PLT.
+
+Here is no optimization and efficiency I guess XD. And after I test it's robustness, I will fill the README.md more to make it an explaination of the Tutorial.
+
 ## Progress
 - 10.28
   I fixed the macro apply system and test easy case (without replicate macro rules). 
