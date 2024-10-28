@@ -11,13 +11,20 @@ type SParser = Parser Expr
 specialChar :: Parser Char
 specialChar = oneOf "!$%&*/:<?^_-=<"
 
+parseProgram :: Parser [Expr]
+parseProgram = many pExpr
+
 pExpr :: SParser
-pExpr =
-  pSymbol
-    <|> pEllipsis
-    <|> pNumber
-    <|> pList
-    <|> pQuote
+pExpr = do
+  intertokenSpace
+  expr <-
+    pSymbol
+      <|> pEllipsis
+      <|> pNumber
+      <|> pList
+      <|> pQuote
+  intertokenSpace
+  return expr
 
 intertokenSpace :: Parser String
 intertokenSpace = do

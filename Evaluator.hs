@@ -7,15 +7,16 @@ import Data.HashSet qualified as Set
 import Data.IORef
 import Environment (emptyEnv, initEnv)
 import Macro (applyMacro)
-import Parser (pExpr)
+import Parser (pExpr, parseProgram)
 import Syntax
 import Text.Parsec (parse)
 
-parseEval :: Environment -> String -> IOThrowError Expr
-parseEval env input = do
-  case parse pExpr "" input of
+parseEvalProgram :: Environment -> String -> IOThrowError [Expr]
+parseEvalProgram env input = do
+  case parse parseProgram "" input of
     Left _ -> throwError $ Default "Parse Error."
-    Right rst -> eval env rst
+    Right rst -> do
+      mapM (eval env) rst
 
 -- |
 -- Evaluate the Expr until the datum-like expr. It handle the following cases: \
