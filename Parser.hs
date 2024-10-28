@@ -14,6 +14,7 @@ specialChar = oneOf "!$%&*/:<?^_-=<"
 pExpr :: SParser
 pExpr =
   pSymbol
+    <|> pEllipsis
     <|> pNumber
     <|> pList
     <|> pQuote
@@ -41,6 +42,12 @@ pSymbol = do
   first <- letter <|> oneOf "#+-*/=><"
   rest <- many (letter <|> digit <|> specialChar)
   return $ Symbol (first : rest)
+
+pEllipsis :: SParser
+pEllipsis = do
+  intertokenSpace
+  string "..."
+  return $ Symbol "..."
 
 pQuote :: SParser
 pQuote = do

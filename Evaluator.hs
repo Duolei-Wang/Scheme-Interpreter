@@ -6,6 +6,7 @@ import Data.HashSet (HashSet)
 import Data.HashSet qualified as Set
 import Data.IORef
 import Environment (emptyEnv, initEnv)
+import Macro (applyMacro)
 import Parser (pExpr)
 import Syntax
 import Text.Parsec (parse)
@@ -47,15 +48,12 @@ eval env expr = case expr of
       Just lam@(Lambda params body env) -> do
         evaluatedArgs <- mapM (eval env) args
         applyLambda env lam evaluatedArgs
-      Just (Macro closure) -> applyMacro closure args
+      Just (Macro closure) -> do
+        expr <- applyMacro env closure $ List (Symbol fnName : args)
+        eval env expr
       _ -> throwError $ Default $ "Unknown symbol: " ++ fnName
   Quote expr -> return expr
   _ -> return expr
-
-applyPrimFn :: Expr -> [Expr] -> IOThrowError Expr
-applyPrimFn expr args = case expr of
-  (Primitive fn) -> fn args
-  _ -> throwError $ Default "Not a primitive function."
 
 applyLambda :: Environment -> Expr -> [Expr] -> IOThrowError Expr
 applyLambda env lam args = case lam of
@@ -69,32 +67,33 @@ applyLambda env lam args = case lam of
   _ -> do
     throwError $ Default "Invalid Lambda Expression."
 
-extendEnv :: [String] -> [Expr] -> Environment -> IO Environment
-extendEnv names exprs oldenv = do
-  oldMap <- liftIO $ readIORef oldenv
-  let newBindings = Map.fromList (zip names exprs)
-  liftIO $ newIORef (Map.union newBindings oldMap)
-
-applyMacro = undefined
-
-define :: Environment -> String -> Expr -> IOThrowError Expr
-define env name expr = do
-  liftIO $ modifyIORef env (Map.insert name expr)
-  return $ Symbol name
-
 evalSyntaxClosure' :: Environment -> String -> Expr -> IOThrowError SyntaxClosure
 evalSyntaxClosure' env macroName expr = case expr of
   List (Symbol "syntax-rules" : List literals : expr') -> do
     litNames <- mapM readSymbolName literals
     let litNameSet = Set.fromList (macroName : litNames)
-    rules <- mapM (evalRule' litNameSet) expr'
-    let closure = Syntax rules env
+    pairs <- makePTPair expr'
+    rules <- evalRules litNameSet pairs
+    let closure = SyntaxClosure rules env
     return closure
-    where
-      readSymbolName :: Expr -> IOThrowError String
-      readSymbolName expr = case expr of
-        Symbol name -> return name
-        _ -> throwError $ Default "Literals should contain only Symbols."
+
+readSymbolName :: Expr -> IOThrowError String
+readSymbolName expr = case expr of
+  Symbol name -> return name
+  _ -> throwError $ Default "Literals should contain only Symbols."
+
+makePTPair :: [Expr] -> IOThrowError [(Expr, Expr)]
+makePTPair = makePTPair' []
+
+makePTPair' :: [(Expr, Expr)] -> [Expr] -> IOThrowError [(Expr, Expr)]
+makePTPair' rst lst = case lst of
+  [] -> return rst
+  [x] -> throwError $ Default "Pattern and Template should occur in pair."
+  [pat, tem] -> makePTPair' ((pat, tem) : rst) []
+  (x : y : rest) -> makePTPair' ((x, y) : rst) rest
+
+evalRules :: HashSet String -> [(Expr, Expr)] -> IOThrowError [Rule]
+evalRules lits = mapM (\(p, t) -> evalRule' lits (List [p, t]))
 
 evalRule' :: HashSet String -> Expr -> IOThrowError Rule
 evalRule' litSet expr = case expr of
@@ -120,13 +119,6 @@ evalPattern' litSet expr = case expr of
     return $ PList pats'
   _ -> throwError $ Default "Unknown pattern define."
 
-bvSet :: Pattern -> HashSet String
-bvSet pat = case pat of
-  PSymbol _ -> Set.empty
-  PVariable var -> Set.singleton var
-  PList lst -> Set.unions $ map bvSet lst
-  PRepeat p -> bvSet p
-
 evalTemplate' :: HashSet String -> Expr -> IOThrowError Template
 evalTemplate' pvars expr = case expr of
   Symbol name ->
@@ -139,3 +131,26 @@ evalTemplate' pvars expr = case expr of
   List temps -> do
     temps' <- mapM (evalTemplate' pvars) temps
     return $ TList temps'
+
+applyPrimFn :: Expr -> [Expr] -> IOThrowError Expr
+applyPrimFn expr args = case expr of
+  (Primitive fn) -> fn args
+  _ -> throwError $ Default "Not a primitive function."
+
+extendEnv :: [String] -> [Expr] -> Environment -> IO Environment
+extendEnv names exprs oldenv = do
+  oldMap <- liftIO $ readIORef oldenv
+  let newBindings = Map.fromList (zip names exprs)
+  liftIO $ newIORef (Map.union newBindings oldMap)
+
+define :: Environment -> String -> Expr -> IOThrowError Expr
+define env name expr = do
+  liftIO $ modifyIORef env (Map.insert name expr)
+  return $ Symbol name
+
+bvSet :: Pattern -> HashSet String
+bvSet pat = case pat of
+  PSymbol _ -> Set.empty
+  PVariable var -> Set.singleton var
+  PList lst -> Set.unions $ map bvSet lst
+  PRepeat p -> bvSet p

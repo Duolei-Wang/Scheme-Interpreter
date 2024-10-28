@@ -40,7 +40,7 @@ showExpr expr = case expr of
       ++ ")\nBody: "
       ++ showExpr expr
       ++ ")"
-  Macro refSyntaxClosure -> "macro"
+  Macro closure -> show closure
 
 showaList :: [String] -> String
 showaList lst = case lst of
@@ -48,7 +48,10 @@ showaList lst = case lst of
   [x] -> x
   (x : xs) -> x ++ ", " ++ showaList xs
 
-data SyntaxClosure = Syntax [(Pattern, Template)] Environment
+data SyntaxClosure = SyntaxClosure [(Pattern, Template)] Environment
+
+showSyntaxClosure :: SyntaxClosure -> String
+showSyntaxClosure (SyntaxClosure rules env) = show rules
 
 newtype SError
   = Default String
@@ -72,10 +75,36 @@ data Pattern
   | PList [Pattern]
   | PRepeat Pattern
 
+instance Show Pattern where
+  show :: Pattern -> String
+  show = showPattern
+
+showPattern :: Pattern -> String
+showPattern p = case p of
+  PSymbol s -> "PSymbol " ++ show s
+  PVariable v -> "PVariable " ++ show v
+  PList lst -> "PList [" ++ unwords (map showPattern lst) ++ "]"
+  PRepeat p -> "PRepeat " ++ showPattern p
+
 data Template
   = TSymbol String
   | TVariable String
   | TList [Template]
   | TRepeat Template
 
+instance Show Template where
+  show :: Template -> String
+  show = showTemplate
+
+showTemplate :: Template -> String
+showTemplate t = case t of
+  TSymbol s -> "TSymbol " ++ show s
+  TVariable v -> "TVariable " ++ show v
+  TList lst -> "TList [" ++ unwords (map showTemplate lst) ++ "]"
+  TRepeat p -> "TRepeat " ++ showTemplate p
+
 type Rule = (Pattern, Template)
+
+instance (Show SyntaxClosure) where
+  show :: SyntaxClosure -> String
+  show (SyntaxClosure rules env) = show rules

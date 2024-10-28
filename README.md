@@ -1,6 +1,8 @@
 # Scheme-Interpreter
 
 ## Progress
+- 10.28
+  I fixed the macro apply system and test easy case (without replicate macro rules). 
 
 - 10.27
   Today, I make most of my interpreter. The framework contains an unfinished Macro system. Right now, we can define macro and transformer properly but the applyMacro is still undefined.
