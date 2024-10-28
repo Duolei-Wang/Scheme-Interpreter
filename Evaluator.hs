@@ -73,25 +73,20 @@ evalSyntaxClosure' env macroName expr = case expr of
   List (Symbol "syntax-rules" : List literals : expr') -> do
     litNames <- mapM readSymbolName literals
     let litNameSet = Set.fromList (macroName : litNames)
-    pairs <- makePTPair expr'
+    pairs <- mapM unpackExprList expr'
     rules <- evalRules litNameSet pairs
     let closure = SyntaxClosure rules env
     return closure
+    where
+      unpackExprList :: Expr -> IOThrowError (Expr, Expr)
+      unpackExprList expr = case expr of
+        List [lhs, rhs] -> return (lhs, rhs)
+        _ -> throwError $ Default "Error when read rules."
 
 readSymbolName :: Expr -> IOThrowError String
 readSymbolName expr = case expr of
   Symbol name -> return name
   _ -> throwError $ Default "Literals should contain only Symbols."
-
-makePTPair :: [Expr] -> IOThrowError [(Expr, Expr)]
-makePTPair = makePTPair' []
-
-makePTPair' :: [(Expr, Expr)] -> [Expr] -> IOThrowError [(Expr, Expr)]
-makePTPair' rst lst = case lst of
-  [] -> return rst
-  [x] -> throwError $ Default "Pattern and Template should occur in pair."
-  [pat, tem] -> makePTPair' ((pat, tem) : rst) []
-  (x : y : rest) -> makePTPair' ((x, y) : rst) rest
 
 evalRules :: HashSet String -> [(Expr, Expr)] -> IOThrowError [Rule]
 evalRules lits = mapM (\(p, t) -> evalRule' lits (List [p, t]))

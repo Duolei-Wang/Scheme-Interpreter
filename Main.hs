@@ -6,7 +6,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.HashSet qualified as Set
 import Data.IORef
 import Environment hiding (pExprList)
-import Evaluator (eval, evalRules, evalSyntaxClosure', makePTPair, parseEvalProgram)
+import Evaluator (eval, evalRules, evalSyntaxClosure', parseEvalProgram)
 import Parser hiding (pExprList)
 import Syntax
 import System.Environment (getArgs)
